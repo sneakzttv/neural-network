@@ -2,9 +2,11 @@
 
 import http.client
 from http.server import ThreadingHTTPServer
+import io
 import json
 import threading
 import unittest
+from unittest.mock import patch
 
 from app import Handler, TRAINING_LOCK
 
@@ -82,6 +84,32 @@ class HTTPTests(unittest.TestCase):
             self.assertIn("progress", json.loads(body)["error"])
         finally:
             TRAINING_LOCK.release()
+
+    def test_training_gate_is_released_before_response_starts(self):
+        # Probe at the exact response boundary, without thread scheduling, sleeps,
+        # or weakening the real gate. Both success and validation errors must
+        # release it before the client can receive any response bytes.
+        for training_error in (None, ValueError("Invalid settings.")):
+            with self.subTest(training_error=training_error):
+                handler = object.__new__(Handler)
+                handler.path = "/api/train"
+                handler.headers = {"Content-Type": "application/json", "Content-Length": "2"}
+                handler.rfile = io.BytesIO(b"{}")
+                observations = []
+
+                def observe_response(status, body):
+                    available = TRAINING_LOCK.acquire(blocking=False)
+                    if available:
+                        TRAINING_LOCK.release()
+                    observations.append((status, available))
+
+                # Only transport setup and fitting are mocked. do_POST and the
+                # production lock lifecycle execute unchanged.
+                with patch.object(handler, "allowed_request", return_value=True), \
+                     patch.object(handler, "respond", side_effect=observe_response), \
+                     patch("app.train", return_value={}, side_effect=training_error):
+                    handler.do_POST()
+                self.assertEqual(observations, [(400 if training_error else 200, True)])
 
 
 if __name__ == "__main__":

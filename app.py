@@ -98,17 +98,23 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Incomplete request body.")
             payload = json.loads(raw.decode("utf-8"))
             result = train(payload)
-            self.respond(200, result)
+            status, response = 200, result
         except (ValueError, UnicodeDecodeError, RecursionError) as error:
-            self.respond(400, {"error": str(error) or "Invalid JSON settings."})
+            status, response = 400, {"error": str(error) or "Invalid JSON settings."}
         except (BrokenPipeError, ConnectionResetError):
             # A closed tab should not turn a completed experiment into a traceback.
-            pass
+            return
         except Exception:
             traceback.print_exc()
-            self.respond(500, {"error": "Unexpected training failure. Check the server terminal."})
+            status, response = 500, {"error": "Unexpected training failure. Check the server terminal."}
         finally:
             TRAINING_LOCK.release()
+        # A client can start its next request as soon as it reads this response.
+        # Release the completed fit's gate first, including on invalid payloads.
+        try:
+            self.respond(status, response)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def setup(self):
         super().setup()
