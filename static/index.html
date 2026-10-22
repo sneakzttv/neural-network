@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NumPy Neural Lab · From scratch</title>
-  <link rel="stylesheet" href="/style.css">
-  <script src="/app.js" defer></script>
+  <title>Neural Lab · From scratch</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
 </head>
 <body>
   <!-- All assets are local: this tutorial never calls a CDN or analytics service. -->
   <header>
     <p class="eyebrow">FROM SCRATCH / INTERACTIVE LAB</p>
     <h1>A neural network, <span>without the black box.</span></h1>
-    <p>Generate two-dimensional data. Train a real NumPy MLP. Follow every step from inputs to gradients.</p>
-    <div class="badges"><span>NumPy only</span><span>Analytical backprop</span><span>100% local</span></div>
+    <p>Generate two-dimensional data. Train a real MLP in your browser (JavaScript port of our NumPy reference). Follow every step from inputs to gradients.</p>
+    <div class="badges"><span>Dependency-free JavaScript</span><span>Analytical backprop</span><span>Local training</span></div>
   </header>
   <main>
     <aside class="panel">
       <h2>01 / Set up an experiment</h2>
-      <p class="muted">Every run starts fresh. Matching settings and seed reproduce the same experiment.</p>
-      <!-- Native constraints help people; Python separately validates all settings. -->
+      <p class="muted">Every run starts fresh. Matching settings and seed reproduce the same browser experiment. NumPy uses a different random stream.</p>
+      <!-- Native constraints help people; The browser engine separately validates all settings; the reference API does too. -->
       <form id="settings">
         <label>Dataset<select name="dataset"><option value="xor">XOR — opposite signs</option><option value="circle">Circle — inside vs outside</option></select></label>
         <label>Hidden activation<select name="activation"><option value="tanh">tanh · smooth, −1 to 1</option><option value="relu">ReLU · max(0, z)</option></select></label>
@@ -45,7 +45,7 @@
       <p class="scope">Honest scope: synthetic binary classification, one hidden layer, CPU training. No autograd, GPU, Pandas, Matplotlib, or Jupyter required.</p>
     </aside>
     <section class="workspace" aria-label="Experiment results">
-      <div id="empty" class="panel"><h2>Learn by changing one thing.</h2><p>Start with the defaults, then compare SGD, a different activation, or the circular dataset. Results arrive together when training completes; these are measured metrics, not a simulated animation.</p></div>
+      <div id="empty" class="panel"><h2>Learn by changing one thing.</h2><p>Start with the defaults, then compare SGD, a different activation, or the circular dataset. Epoch progress appears during training; results arrive together when training completes; these are measured metrics, not a simulated animation.</p></div>
       <div id="results" hidden>
         <section class="metrics" aria-label="Final metrics">
           <div class="panel"><span>Training accuracy</span><strong id="train-accuracy">—</strong></div>
