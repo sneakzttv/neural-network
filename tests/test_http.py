@@ -48,7 +48,7 @@ class HTTPTests(unittest.TestCase):
         status, body, _ = self.request("GET", "/api/health")
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["status"], "ok")
-        for path in ("/", "/style.css", "/app.js"):
+        for path in ("/", "/style.css", "/app.js", "/engine.js", "/worker.js"):
             status, body, headers = self.request("GET", path)
             self.assertEqual(status, 200)
             self.assertGreater(len(body), 100)

@@ -1,6 +1,6 @@
 "use strict";
 
-// No external chart library: Canvas draws measured values returned by Python.
+// No external chart library: Canvas draws measured values from the browser engine.
 const $ = (id) => document.getElementById(id);
 const chapters = ["Architecture", "Activation", "Forward pass", "Loss", "Backprop", "Updates", "Metrics"];
 let experiment = null;
@@ -28,21 +28,17 @@ $("settings").addEventListener("submit", async (event) => {
   }
   $("train").disabled = true;
   $("error").hidden = true;
-  $("status").textContent = "Training locally… results appear when the complete run finishes.";
+  $("status").textContent = "Training in a browser worker…";
   $("results").setAttribute("aria-busy", "true");
   try {
-    const response = await fetch("/api/train", {
-      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(settings),
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    const result = await trainInWorker(settings);
     experiment = result;
     chapter = 0;
     render();
     $("status").textContent = `Finished ${result.config.epochs} epochs. The model and tutorial now reflect this run.`;
   } catch (error) {
     // Preserve earlier results but clearly label them as belonging to the prior run.
-    $("error").textContent = `Run failed: ${error.message}. Check settings and that app.py is running.`;
+    $("error").textContent = `Run failed: ${error.message}. Check settings and serve this page over HTTP(S) in a browser with Web Worker support.`;
     $("error").hidden = false;
     $("status").textContent = experiment ? "Previous successful results remain below; this run did not replace them." : "No training result yet.";
   } finally {
@@ -50,6 +46,25 @@ $("settings").addEventListener("submit", async (event) => {
     $("results").setAttribute("aria-busy", "false");
   }
 });
+
+// Resolve relative to this page: works both at / and /neural-network/.
+function trainInWorker(settings) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL("./worker.js", document.baseURI));
+    const fail = (message) => { worker.terminate(); reject(new Error(message)); };
+    worker.onmessage = ({data}) => {
+      if (data.type === "progress") {
+        $("status").textContent = `Training in your browser: epoch ${data.epoch} / ${data.epochs}.`;
+      } else if (data.type === "result") {
+        worker.terminate();
+        resolve(data.result);
+      } else if (data.type === "error") fail(data.error);
+    };
+    worker.onerror = () => fail("Browser worker failed to load or execute");
+    worker.onmessageerror = () => fail("Browser worker returned an unreadable result");
+    worker.postMessage(settings);
+  });
+}
 
 function render() {
   const r = experiment, final = r.history[r.history.length - 1];
@@ -160,7 +175,7 @@ function showLesson() {
     `<h3>Loss: measure how wrong a probability is</h3>
      <p>Binary cross-entropy penalizes confident wrong predictions strongly. Training minimizes the mean of these losses, not the thresholded accuracy.</p>
      <pre>Target y = ${e.y}\np = ${f(e.probability)}\nBCE = −[y·log(p) + (1−y)·log(1−p)]\nSingle-example BCE = ${f(e.loss)}\nPrediction (p ≥ 0.5): ${e.probability >= 0.5 ? 1 : 0}</pre>
-     <p>Python uses the numerically stable equivalent logaddexp(0, logit) − y·logit; this avoids log(0) without clipping gradients.</p>`,
+     <p>The browser uses stable softplus(logit) − y·logit (Python: logaddexp(0, logit) − y·logit); this avoids log(0) without clipping gradients.</p>`,
     `<h3>Backprop: reverse the chain rule</h3>
      <p>Sigmoid combined with BCE simplifies the output derivative to p − y. For a batch of n, divide by n before propagating backward.</p>
      <pre>Single example (n = 1):\nδ₂ = p − y = ${f(e.dz2)}\n∂L/∂W₂ = a₁ᵀ · δ₂\nδ₁ = (δ₂ · W₂ᵀ) ⊙ activation′(z₁)\n∂L/∂W₁[0,0] = x₁ × δ₂ × W₂[0,0] × activation′(z₁[0])\n= ${f(e.x[0])} × ${f(e.dz2)} × ${f(e.w2_first)} × ${f(e.activation_derivative)}\n= ${f(e.gradient_w1_first)}</pre>
