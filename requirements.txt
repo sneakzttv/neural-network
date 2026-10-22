@@ -1,0 +1,2 @@
+# NumPy is the sole runtime dependency; the browser draws all visualizations.
+numpy>=1.24,<3

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NumPy Neural Lab · From scratch</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <!-- All assets are local: this tutorial never calls a CDN or analytics service. -->
+  <header>
+    <p class="eyebrow">FROM SCRATCH / INTERACTIVE LAB</p>
+    <h1>A neural network, <span>without the black box.</span></h1>
+    <p>Generate two-dimensional data. Train a real NumPy MLP. Follow every step from inputs to gradients.</p>
+    <div class="badges"><span>NumPy only</span><span>Analytical backprop</span><span>100% local</span></div>
+  </header>
+  <main>
+    <aside class="panel">
+      <h2>01 / Set up an experiment</h2>
+      <p class="muted">Every run starts fresh. Matching settings and seed reproduce the same experiment.</p>
+      <!-- Native constraints help people; Python separately validates all settings. -->
+      <form id="settings">
+        <label>Dataset<select name="dataset"><option value="xor">XOR — opposite signs</option><option value="circle">Circle — inside vs outside</option></select></label>
+        <label>Hidden activation<select name="activation"><option value="tanh">tanh · smooth, −1 to 1</option><option value="relu">ReLU · max(0, z)</option></select></label>
+        <label>Optimizer<select name="optimizer"><option value="adam">Adam · adaptive moments</option><option value="sgd">SGD · plain gradient step</option></select></label>
+        <div class="fields">
+          <label>Hidden units<input name="hidden" type="number" value="12" min="2" max="32" required></label>
+          <label>Samples<input name="samples" type="number" value="400" min="80" max="800" required></label>
+          <label>Epochs<input name="epochs" type="number" value="500" min="1" max="1200" required></label>
+          <label>Batch size<input name="batch_size" type="number" value="32" min="8" max="128" required></label>
+          <label>Learning rate<input name="learning_rate" type="number" value="0.03" min="0.000001" max="1" step="any" required></label>
+          <label>Seed<input name="seed" type="number" value="7" min="0" max="4294967295" required></label>
+        </div>
+        <button id="train" type="submit">Train network →</button>
+      </form>
+      <p id="status" role="status" aria-live="polite">Ready. Train a network to populate the tutorial.</p>
+      <p id="error" role="alert" hidden></p>
+      <details>
+        <summary>What do these controls mean?</summary>
+        <p><strong>Hidden units</strong> set model capacity; more is not always better. An <strong>epoch</strong> visits every training sample once. A <strong>batch</strong> averages gradients from a subset before one update.</p>
+        <p><strong>Learning rate</strong> scales each update. SGD often needs more epochs or a larger rate than Adam. High rates can oscillate; ReLU units can stop learning if always negative.</p>
+        <p><strong>Seed</strong> fixes data, split, initial weights, and batch order. Try changing one control at a time.</p>
+      </details>
+      <p class="scope">Honest scope: synthetic binary classification, one hidden layer, CPU training. No autograd, GPU, Pandas, Matplotlib, or Jupyter required.</p>
+    </aside>
+    <section class="workspace" aria-label="Experiment results">
+      <div id="empty" class="panel"><h2>Learn by changing one thing.</h2><p>Start with the defaults, then compare SGD, a different activation, or the circular dataset. Results arrive together when training completes; these are measured metrics, not a simulated animation.</p></div>
+      <div id="results" hidden>
+        <section class="metrics" aria-label="Final metrics">
+          <div class="panel"><span>Training accuracy</span><strong id="train-accuracy">—</strong></div>
+          <div class="panel"><span>Validation accuracy</span><strong id="val-accuracy">—</strong></div>
+          <div class="panel"><span>Validation BCE</span><strong id="val-loss">—</strong></div>
+          <div class="panel"><span>Weight updates</span><strong id="updates">—</strong></div>
+        </section>
+        <section class="panel">
+          <h2>02 / See what it learned</h2>
+          <p id="split-info" class="muted"></p>
+          <div class="plots">
+            <figure><figcaption>Binary cross-entropy ↓</figcaption><canvas id="loss" width="520" height="280" role="img" aria-label="Training and validation loss by epoch"></canvas></figure>
+            <figure><figcaption>Accuracy ↑</figcaption><canvas id="accuracy" width="520" height="280" role="img" aria-label="Training and validation accuracy by epoch"></canvas></figure>
+          </div>
+          <p class="legend"><span class="train-line">━ Training</span> <span class="val-line">━ Validation</span> · x-axis: epoch · validation is never used for gradient updates.</p>
+          <div class="boundary-row">
+            <figure><figcaption>Decision surface · x₁ vs x₂</figcaption><canvas id="boundary" width="420" height="360" role="img" aria-label="Learned probability surface and labeled synthetic samples"></canvas></figure>
+            <div><h3>Read the boundary</h3><p>Blue means low P(class 1), coral means high P(class 1). Dots show true labels: blue = 0, coral = 1. White rings mark held-out validation examples.</p><p>The middle color is uncertainty near probability 0.5. Points in that region are most likely to change prediction.</p><p id="data-rule"></p></div>
+          </div>
+          <details><summary>Exact recorded metrics (accessible table)</summary><div class="table-scroll"><table><thead><tr><th>Epoch</th><th>Train BCE</th><th>Val BCE</th><th>Train accuracy</th><th>Val accuracy</th></tr></thead><tbody id="metric-rows"></tbody></table></div></details>
+        </section>
+        <section class="panel tutorial">
+          <p class="eyebrow">03 / FOLLOW THE MATH</p>
+          <h2>One sample. Every step.</h2>
+          <p class="muted">Live values from the final model and its first training sample. This walkthrough explains a single-example gradient; actual training uses mean mini-batch gradients.</p>
+          <nav id="steps" aria-label="Tutorial chapters"></nav>
+          <div id="lesson" aria-live="polite"></div>
+          <div class="navigation"><button id="back" type="button">← Back</button><span id="step-number"></span><button id="next" type="button">Next →</button></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer>A transparent portfolio demonstration · MIT licensed · Nothing leaves your machine</footer>
+</body>
+</html>
